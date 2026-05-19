@@ -1,0 +1,3 @@
+interface:
+  display_name: "Backend FastAPI Platform"
+  short_description: "FastAPI + SQLAlchemy + Alembic architecture with schema-first, service-layer, and integration-boundary conventions."
