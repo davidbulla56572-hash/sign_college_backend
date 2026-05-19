@@ -1,0 +1,39 @@
+﻿title,body
+FE - Maquetar pantalla de login,"Construir la vista de inicio de sesión con campos email y contraseña, botón de acceso, mensajes de error y estado de carga. Incluir diseño responsive, validaciones visuales y navegación al panel según el rol retornado por el backend."
+FE - Validar formulario de login,Implementar validaciones de frontend para email obligatorio con formato válido y contraseña obligatoria. Bloquear envío si hay errores y mostrar mensajes claros sin filtrar reglas sensibles del backend.
+FE - Integrar consumo del endpoint de autenticación,"Conectar el formulario de login con el servicio de autenticación del backend. Manejar loading, errores 401/403/500, persistencia segura del token/sesión y redirección por rol ASPIRANTE o ADMIN."
+FE - Implementar guards y manejo de sesión,"Agregar protección de rutas, verificación de sesión activa y cierre de sesión. Evitar acceso a módulos privados sin autenticación y controlar expiración de sesión."
+BE - Diseñar endpoint de autenticación,"Crear endpoint de login que reciba email y contraseña, valide credenciales contra la base de datos y retorne datos mínimos del usuario autenticado. Incluir respuesta diferenciada por rol y manejo de estados de cuenta inactiva."
+BE - Implementar servicio de validación de credenciales,"Comparar contraseña en texto plano contra password_hash, validar usuario activo y centralizar reglas de autenticación. Registrar eventos de error sin exponer información sensible."
+BE - Generar token o sesión segura,"Implementar estrategia de sesión (JWT o sesión de servidor), tiempo de expiración y mecanismo de renovación si aplica. Definir claims mínimos: id_usuario, rol y vigencia."
+BE - Middleware de autorización por rol,Crear middleware para restringir acceso a recursos según rol ASPIRANTE o ADMIN y reutilizarlo en rutas privadas del sistema.
+QA - Probar flujo completo de login,"Ejecutar pruebas funcionales para acceso exitoso, credenciales inválidas, cuenta inactiva, expiración de sesión y redirección correcta por rol."
+FE - Diseñar módulo de Formato HV,"Construir la interfaz principal del formato de hoja de vida/postulación con secciones por tipo de ítem: experiencia, formación, producción, ponencia e investigación. Definir navegación por pasos o pestañas, estructura responsive y jerarquía visual."
+FE - Implementar formulario dinámico para ítems de hoja de vida,"Permitir agregar, editar y eliminar registros del formato HV. Cada ítem debe capturar tipo_item, descripción, institución, fecha_inicio, fecha_fin y cantidad."
+FE - Implementar carga de soportes por ítem,"Agregar componente para adjuntar soportes documentales por cada ítem del formato HV. Validar tipos de archivo permitidos, tamaño máximo y mostrar progreso de subida."
+FE - Persistencia temporal del borrador del formato HV,Permitir guardar cambios del formulario en estado borrador para continuar después. Sincronizar con backend y restaurar la información al recargar.
+FE - Validaciones de negocio del formato HV,"Aplicar validaciones de campos obligatorios, fechas coherentes, cantidad positiva y obligatoriedad de soportes según el tipo de ítem."
+BE - Crear endpoints CRUD para ítems de hoja de vida,"Implementar endpoints para crear, listar, actualizar y eliminar registros de item_hoja_vida asociados a una postulación."
+BE - Crear endpoints para soportes documentales,"Implementar carga, consulta y eliminación de soportes en soporte_item. Guardar nombre_archivo, url_archivo, tipo_archivo, tamaño y relación con el ítem."
+BE - Manejar almacenamiento de archivos del formato HV,"Configurar estrategia de almacenamiento local o en nube para soportes. Garantizar nombres únicos, validación de extensiones y trazabilidad del archivo."
+BE - Guardar y recuperar postulaciones en borrador,Permitir que una postulación permanezca en estado BORRADOR mientras el aspirante completa el formato HV. Exponer endpoint para recuperar la postulación en progreso.
+BE - Reglas de integridad para formato HV,Validar que solo el dueño de la postulación pueda modificar sus ítems mientras la convocatoria esté activa y la postulación no haya sido enviada.
+QA - Probar flujo completo del formato HV,"Validar creación y edición de ítems, guardado en borrador, carga de soportes, restricciones por estado y recuperación de información persistida."
+FE - Diseñar vista de muestras de resultados,"Crear la pantalla donde el aspirante visualiza el estado de su postulación, puntaje total o parcial y el detalle por ítem evaluado. Incluir estados vacíos, mensajes informativos y diseño responsive."
+FE - Implementar componente de detalle de puntajes,"Mostrar tabla o cards con cada ítem evaluado, cantidad registrada, puntaje asignado y estado de validación. Agregar filtros básicos y ordenamiento si es necesario."
+FE - Integrar consulta de resultados,"Consumir endpoint de resultados de postulación y manejar escenarios: sin postulación enviada, resultado parcial, error temporal y estados finales."
+BE - Crear endpoint para consultar estado y resultados de postulación,"Exponer servicio que retorne estado actual, puntaje_total, observaciones_admin y detalle de ítems evaluados para el aspirante autenticado."
+BE - Consolidar respuesta de resultados,"Construir DTO que una información de postulacion, item_hoja_vida y soportes relevantes para la vista de resultados sin exponer datos innecesarios."
+BE - Registrar observaciones y trazabilidad de evaluación,Asegurar que observaciones_admin y fecha_evaluacion queden disponibles para consulta cuando existan revisiones o ajustes manuales.
+QA - Probar consulta de resultados,"Validar escenarios con postulación enviada, en proceso, aceptada, rechazada y sin postulación enviada. Verificar coherencia del puntaje total respecto al detalle mostrado."
+DEV - Definir contratos API entre frontend y backend,"Documentar payloads, respuestas, códigos de estado y reglas de error para Login, Formato HV y Muestras de resultados."
+DEV - Configurar manejo centralizado de errores,"Estandarizar mensajes y códigos de error en frontend y backend para autenticación, formularios, subida de archivos y consulta de resultados."
+DEV - Preparar datos semilla para pruebas,"Crear usuarios, convocatoria activa, postulación de ejemplo, ítems y soportes de prueba para facilitar demos y validación de la segunda entrega."
+DOC - Mejorar diagrama UML,"Actualizar el diagrama de clases para que refleje con cohesión las entidades, atributos, métodos y relaciones definitivas del sistema implementado."
+DOC - Mejorar MER,"Ajustar el modelo entidad-relación con base en la versión actual de la base de datos, claves foráneas, restricciones y tablas soporte_item y regla_evaluacion."
+DOC - Redactar historias de usuario de los casos implementados,"Documentar las historias de usuario o fichas funcionales de Login, Formato HV y Muestras de resultados con objetivo, precondiciones, flujo principal, excepciones y postcondición."
+DOC - Elaborar manual de usuario,"Crear manual con pasos de uso del sistema para aspirante y administrador, incluyendo login, diligenciamiento del formato HV y consulta de resultados."
+PM - Actualizar tablero Kanban,"Registrar las tareas de la segunda entrega en GitHub Projects, actualizar estados, responsables, prioridades y evidencias de avance."
+RISK - Diligenciar formato de riesgos,"Identificar riesgos técnicos y funcionales de la segunda entrega, su probabilidad, impacto, plan de mitigación y responsable."
+QA - Preparar evidencias de los 3 casos de uso implementados,"Recolectar capturas, datos de prueba y resultados de ejecución para sustentar la entrega de Login, Formato HV y Muestras de resultados."
+DEMO - Preparar guion de demostración de la entrega 2,"Definir secuencia de demo, usuarios de prueba, recorrido funcional y mensajes clave para presentar el avance de UML, MER y casos implementados."
