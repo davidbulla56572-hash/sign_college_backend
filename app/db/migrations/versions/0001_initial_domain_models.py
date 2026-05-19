@@ -124,7 +124,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
         sa.ForeignKeyConstraint(["id_usuario"], ["usuario.id_usuario"]),
-        sa.ForeignKeyConstraint(["id_convocatoria"], ["convocatorias.id_convocatoria"]),
+        sa.ForeignKeyConstraint(["id_convocatoria"], ["convocatoria.id_convocatoria"]),
         sa.UniqueConstraint(
             "id_usuario",
             "id_convocatoria",

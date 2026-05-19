@@ -11,7 +11,7 @@ class ReglaEvaluacion(Base):
 
     id_regla: Mapped[int] = mapped_column(primary_key=True, index=True)
     id_convocatoria: Mapped[int] = mapped_column(
-        ForeignKey("convocatorias.id_convocatoria"),
+        ForeignKey("convocatoria.id_convocatoria"),
         index=True,
     )
     tipo_item: Mapped[TipoItemHojaVida] = mapped_column(
