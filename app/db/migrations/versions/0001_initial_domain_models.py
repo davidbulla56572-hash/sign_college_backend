@@ -45,7 +45,7 @@ def upgrade() -> None:
     tipo_item_hoja_vida.create(bind, checkfirst=True)
 
     op.create_table(
-        "usuarios",
+        "usuario",
         sa.Column("id_usuario", sa.Integer(), primary_key=True),
         sa.Column("nombre", sa.String(length=120), nullable=False),
         sa.Column("apellido", sa.String(length=120), nullable=False),
@@ -71,12 +71,12 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index("ix_usuarios_id_usuario", "usuarios", ["id_usuario"])
-    op.create_index("ix_usuarios_cedula", "usuarios", ["cedula"], unique=True)
-    op.create_index("ix_usuarios_email", "usuarios", ["email"], unique=True)
+    op.create_index("ix_usuarios_id_usuario", "usuario", ["id_usuario"])
+    op.create_index("ix_usuarios_cedula", "usuario", ["cedula"], unique=True)
+    op.create_index("ix_usuarios_email", "usuario", ["email"], unique=True)
 
     op.create_table(
-        "convocatorias",
+        "convocatoria",
         sa.Column("id_convocatoria", sa.Integer(), primary_key=True),
         sa.Column("titulo", sa.String(length=180), nullable=False),
         sa.Column("descripcion", sa.Text(), nullable=True),
@@ -96,9 +96,9 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.ForeignKeyConstraint(["creado_por"], ["usuarios.id_usuario"]),
+        sa.ForeignKeyConstraint(["creado_por"], ["usuario.id_usuario"]),
     )
-    op.create_index("ix_convocatorias_id_convocatoria", "convocatorias", ["id_convocatoria"])
+    op.create_index("ix_convocatorias_id_convocatoria", "convocatoria", ["id_convocatoria"])
 
     op.create_table(
         "postulaciones",
@@ -123,7 +123,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.ForeignKeyConstraint(["id_usuario"], ["usuarios.id_usuario"]),
+        sa.ForeignKeyConstraint(["id_usuario"], ["usuario.id_usuario"]),
         sa.ForeignKeyConstraint(["id_convocatoria"], ["convocatorias.id_convocatoria"]),
         sa.UniqueConstraint(
             "id_usuario",
@@ -186,7 +186,7 @@ def upgrade() -> None:
         sa.Column("puntaje_unitario", sa.Numeric(8, 2), nullable=False),
         sa.Column("maximo_acumulable", sa.Numeric(8, 2), nullable=True),
         sa.Column("unidad", sa.String(length=80), nullable=False),
-        sa.ForeignKeyConstraint(["id_convocatoria"], ["convocatorias.id_convocatoria"]),
+        sa.ForeignKeyConstraint(["id_convocatoria"], ["convocatoria.id_convocatoria"]),
     )
     op.create_index("ix_reglas_evaluacion_id_regla", "reglas_evaluacion", ["id_regla"])
     op.create_index("ix_reglas_evaluacion_id_convocatoria", "reglas_evaluacion", ["id_convocatoria"])
@@ -210,13 +210,13 @@ def downgrade() -> None:
     op.drop_index("ix_postulaciones_id_postulacion", table_name="postulaciones")
     op.drop_table("postulaciones")
 
-    op.drop_index("ix_convocatorias_id_convocatoria", table_name="convocatorias")
-    op.drop_table("convocatorias")
+    op.drop_index("ix_convocatorias_id_convocatoria", table_name="convocatoria")
+    op.drop_table("convocatoria")
 
-    op.drop_index("ix_usuarios_email", table_name="usuarios")
-    op.drop_index("ix_usuarios_cedula", table_name="usuarios")
-    op.drop_index("ix_usuarios_id_usuario", table_name="usuarios")
-    op.drop_table("usuarios")
+    op.drop_index("ix_usuarios_email", table_name="usuario")
+    op.drop_index("ix_usuarios_cedula", table_name="usuario")
+    op.drop_index("ix_usuarios_id_usuario", table_name="usuario")
+    op.drop_table("usuario")
 
     bind = op.get_bind()
     tipo_item_hoja_vida.drop(bind, checkfirst=True)

@@ -27,7 +27,7 @@ class Postulacion(Base):
     )
 
     id_postulacion: Mapped[int] = mapped_column(primary_key=True, index=True)
-    id_usuario: Mapped[int] = mapped_column(ForeignKey("usuarios.id_usuario"), index=True)
+    id_usuario: Mapped[int] = mapped_column(ForeignKey("usuario.id_usuario"), index=True)
     id_convocatoria: Mapped[int] = mapped_column(
         ForeignKey("convocatorias.id_convocatoria"),
         index=True,

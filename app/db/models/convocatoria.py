@@ -7,7 +7,7 @@ from app.db.models import Base
 
 
 class Convocatoria(Base):
-    __tablename__ = "convocatorias"
+    __tablename__ = "convocatoria"
 
     id_convocatoria: Mapped[int] = mapped_column(primary_key=True, index=True)
     titulo: Mapped[str] = mapped_column(String(180))
@@ -15,7 +15,7 @@ class Convocatoria(Base):
     fecha_inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     fecha_cierre: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     activa: Mapped[bool] = mapped_column(default=True)
-    creado_por: Mapped[int] = mapped_column(ForeignKey("usuarios.id_usuario"))
+    creado_por: Mapped[int] = mapped_column(ForeignKey("usuario.id_usuario"))
     fecha_creacion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

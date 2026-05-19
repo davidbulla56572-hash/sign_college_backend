@@ -22,16 +22,35 @@ def get_current_user(
     if subject is None:
         raise UnauthorizedError("Invalid token subject")
 
-    user = AuthRepository(db).get_by_id(int(subject))
-    if user is None or not user.activo:
+    try:
+        user_id = int(subject)
+    except (TypeError, ValueError) as exc:
+        raise UnauthorizedError("Invalid token subject") from exc
+
+    user = AuthRepository(db).get_by_id(user_id)
+    if user is None:
         raise UnauthorizedError("Authenticated user is not available")
     return user
 
 
+def get_current_active_user(
+    current_user: Usuario = Depends(get_current_user),
+) -> Usuario:
+    if not current_user.activo:
+        raise ForbiddenError("User account is inactive")
+    return current_user
+
+
 def require_roles(roles: Sequence[UserRole]):
-    def dependency(current_user: Usuario = Depends(get_current_user)) -> Usuario:
+    def dependency(current_user: Usuario = Depends(get_current_active_user)) -> Usuario:
         if current_user.rol not in roles:
             raise ForbiddenError("User does not have permission for this resource")
         return current_user
 
     return dependency
+
+
+def require_admin_role(
+    current_user: Usuario = Depends(require_roles([UserRole.ADMIN])),
+) -> Usuario:
+    return current_user
