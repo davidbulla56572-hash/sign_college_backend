@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-
-# sign_college_backend
-
-=======
-
 # Sign College Backend
 
 API REST para el sistema inteligente de evaluacion de aspirantes docentes.
@@ -49,8 +43,8 @@ python -m app.db.seed
 
 Credenciales de prueba:
 
-- Admin: `admin@signcollege.test` / `Admin12345!`
-- Aspirante: `aspirante@signcollege.test` / `Aspirante12345!`
+- Admin: `admin@signcollege.com` / `Admin12345!`
+- Aspirante: `aspirante@signcollege.com` / `Aspirante12345!`
 
 7. Levantar la API:
 
@@ -77,4 +71,3 @@ La API queda disponible en `http://localhost:8000` y la documentacion en
 - `GET /api/v1/auth/me` devuelve el usuario autenticado a partir del token Bearer.
 - `get_current_active_user` y `require_admin_role` quedan listos para proteger modulos.
 - Los endpoints privados base usan token Bearer y responden 401/403 de forma consistente.
-  > > > > > > > 9babd1b (feat: base inicial)

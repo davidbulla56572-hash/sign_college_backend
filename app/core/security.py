@@ -3,6 +3,7 @@ from typing import Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 
 from app.core.config import settings
 from app.core.exceptions import UnauthorizedError
@@ -12,7 +13,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
-    return pwd_context.verify(plain_password, password_hash)
+    try:
+        return pwd_context.verify(plain_password, password_hash)
+    except (UnknownHashError, ValueError, TypeError):
+        return False
 
 
 def hash_password(password: str) -> str:
