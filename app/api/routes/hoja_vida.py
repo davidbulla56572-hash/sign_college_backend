@@ -35,8 +35,8 @@ def get_hoja_vida_draft(
     service: HojaVidaService = Depends(get_hoja_vida_service),
 ) -> HojaVidaDraftResponse:
     """Load persisted draft for rehydration."""
-    draft = service.get_draft_hoja_vida(current_user)
-    if draft is None or draft.id_postulacion != postulacion_id:
+    draft = service.get_draft_hoja_vida(current_user, postulacion_id)
+    if draft is None:
         from app.core.exceptions import NotFoundError
         raise NotFoundError("No se encontro borrador de hoja de vida")
     return draft
@@ -54,7 +54,6 @@ async def upload_cv_within_postulacion(
     service: HojaVidaService = Depends(get_hoja_vida_service),
 ) -> HojaVidaProcesadaResponse:
     """Upload and process CV within a specific postulacion."""
-    # Verify postulacion belongs to user
     postulacion = service.repository.get_postulacion_for_user(
         postulacion_id=postulacion_id,
         user_id=current_user.id_usuario,
@@ -66,6 +65,7 @@ async def upload_cv_within_postulacion(
     content = await file.read()
     return service.process_upload(
         user=current_user,
+        postulacion_id=postulacion_id,
         filename=file.filename or "cv",
         content_type=file.content_type,
         content=content,

@@ -1,5 +1,3 @@
-from datetime import UTC, datetime, timedelta
-
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -92,22 +90,23 @@ class HojaVidaRepository:
     def get_draft_hoja_vida(
         self,
         user_id: int,
+        postulacion_id: int,
     ) -> dict | None:
-        """Load persisted draft for rehydration.
-        
-        Returns None if no draft exists for the user's active convocatoria.
-        """
-        convocatoria = self._ensure_active_convocatoria_for_user(user_id)
-        if convocatoria is None:
-            return None
-
         statement = select(Postulacion).where(
+            Postulacion.id_postulacion == postulacion_id,
             Postulacion.id_usuario == user_id,
-            Postulacion.id_convocatoria == convocatoria.id_convocatoria,
             Postulacion.estado.in_([PostulacionEstado.BORRADOR, PostulacionEstado.ENVIADA]),
         )
         postulacion = self.db.scalar(statement)
         if postulacion is None:
+            return None
+
+        convocatoria = self.db.scalar(
+            select(Convocatoria).where(
+                Convocatoria.id_convocatoria == postulacion.id_convocatoria
+            )
+        )
+        if convocatoria is None:
             return None
 
         items_stmt = select(ItemHojaVida).where(
@@ -120,11 +119,6 @@ class HojaVidaRepository:
             "convocatoria": convocatoria,
             "items": items,
         }
-
-    def _ensure_active_convocatoria_for_user(self, user_id: int) -> Convocatoria | None:
-        """Get active convocatoria without creating one. Returns None if none exists."""
-        statement = select(Convocatoria).where(Convocatoria.activa.is_(True)).limit(1)
-        return self.db.scalar(statement)
 
     def _build_item(
         self,

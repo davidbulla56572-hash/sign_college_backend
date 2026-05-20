@@ -11,6 +11,7 @@ from app.modules.cv_processing.schemas.hoja_vida import (
     DatosPersonalesHojaVida,
     DocumentoProcesado,
     HojaVidaDraftResponse,
+    HojaVidaItemPayload,
     HojaVidaItemsPayload,
     HojaVidaProcesadaResponse,
     HojaVidaSavePayload,
@@ -42,11 +43,22 @@ class HojaVidaService:
     def process_upload(
         self,
         user: Usuario,
+        postulacion_id: int,
         filename: str,
         content_type: str | None,
         content: bytes,
     ) -> HojaVidaProcesadaResponse:
         self._validate_file(filename, content_type, content)
+
+        if user.rol.value != "ASPIRANTE":
+            raise ForbiddenError("Only aspirants can upload hoja de vida data")
+
+        postulacion = self.repository.get_postulacion_for_user(
+            postulacion_id=postulacion_id,
+            user_id=user.id_usuario,
+        )
+        if postulacion is None:
+            raise NotFoundError("Postulacion not found for current user")
 
         stored_url = self.storage.save_cv(user.id_usuario, filename, content)
         raw_payload = self.extraction_provider.extract(
@@ -54,7 +66,13 @@ class HojaVidaService:
             content_type=content_type or "application/octet-stream",
             content=content,
         )
-        postulacion = self.repository.ensure_draft_postulacion(user, cv_url=stored_url)
+        datos_personales = self.normalizer.normalize_personal_data(raw_payload, user)
+        items = self.normalizer.normalize_items(raw_payload)
+        metadata = self.normalizer.normalize_metadata(raw_payload)
+
+        postulacion.url_cv_original = stored_url
+        self.repository.update_user_personal_data(user, datos_personales)
+        self.repository.replace_hoja_vida_items(postulacion, items)
         self.repository.commit()
 
         return HojaVidaProcesadaResponse(
@@ -65,9 +83,9 @@ class HojaVidaService:
                 tamanio_bytes=len(content),
                 url_archivo=stored_url,
             ),
-            datos_personales=self.normalizer.normalize_personal_data(raw_payload, user),
-            items=self.normalizer.normalize_items(raw_payload),
-            metadata_extraccion=self.normalizer.normalize_metadata(raw_payload),
+            datos_personales=datos_personales,
+            items=items,
+            metadata_extraccion=metadata,
         )
 
     def save_structured_data(
@@ -100,9 +118,13 @@ class HojaVidaService:
             message="Hoja de vida guardada correctamente.",
         )
 
-    def get_draft_hoja_vida(self, user: Usuario) -> HojaVidaDraftResponse | None:
+    def get_draft_hoja_vida(
+        self,
+        user: Usuario,
+        postulacion_id: int,
+    ) -> HojaVidaDraftResponse | None:
         """Load persisted draft for rehydration."""
-        draft = self.repository.get_draft_hoja_vida(user.id_usuario)
+        draft = self.repository.get_draft_hoja_vida(user.id_usuario, postulacion_id)
         if draft is None:
             return None
 
@@ -110,23 +132,21 @@ class HojaVidaService:
         convocatoria = draft["convocatoria"]
         items_db = draft["items"]
 
-        # Group items by section
         section_map = self._db_section_map()
         items = HojaVidaItemsPayload(**{k: [] for k in section_map})
         for item_db in items_db:
             section_key = section_map.get(item_db.tipo_item)
             if section_key:
                 getattr(items, section_key).append(
-                    type("obj", (), {
-                        "descripcion": item_db.descripcion,
-                        "institucion": item_db.institucion,
-                        "fecha_inicio": item_db.fecha_inicio,
-                        "fecha_fin": item_db.fecha_fin,
-                        "cantidad": item_db.cantidad,
-                    })()
+                    HojaVidaItemPayload(
+                        descripcion=item_db.descripcion,
+                        institucion=item_db.institucion,
+                        fecha_inicio=item_db.fecha_inicio,
+                        fecha_fin=item_db.fecha_fin,
+                        cantidad=item_db.cantidad,
+                    )
                 )
 
-        # Build DatosPersonalesHojaVida from user
         datos_personales = DatosPersonalesHojaVida(
             nombre=user.nombre,
             apellido=user.apellido,
