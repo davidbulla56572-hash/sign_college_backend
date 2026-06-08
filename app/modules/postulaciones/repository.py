@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import ConflictError, NotFoundError
-from app.db.models.convocatoria import Convocatoria
+from app.db.models.convocatoria import Convocatoria, ConvocatoriaEstado
 from app.db.models.hoja_vida import ItemHojaVida
 from app.db.models.postulacion import Postulacion, PostulacionEstado
 from app.modules.postulaciones.schemas.postulacion import (
@@ -87,6 +87,8 @@ class PostulacionRepository:
         convocatoria = self.db.scalar(conv_stmt)
         if convocatoria is None:
             raise NotFoundError("Convocatoria not found")
+        if convocatoria.estado != ConvocatoriaEstado.ACTIVA or not convocatoria.activa:
+            raise ConflictError("La convocatoria no esta activa para recibir postulaciones")
 
         # Check for existing postulacion
         existing = self.db.scalar(
@@ -145,7 +147,10 @@ class PostulacionRepository:
         # Find active convocatoria
         conv_stmt = (
             select(Convocatoria)
-            .where(Convocatoria.activa.is_(True))
+            .where(
+                Convocatoria.activa.is_(True),
+                Convocatoria.estado == ConvocatoriaEstado.ACTIVA,
+            )
             .limit(1)
         )
         convocatoria = self.db.scalar(conv_stmt)

@@ -1,10 +1,11 @@
-from app.core.exceptions import NotFoundError
-from app.db.models.convocatoria import Convocatoria
+from app.core.exceptions import ConflictError, NotFoundError
+from app.db.models.convocatoria import Convocatoria, ConvocatoriaEstado
 from app.modules.convocatorias.repository import ConvocatoriaRepository
 from app.modules.convocatorias.schemas.convocatoria import (
     ConvocatoriaCreate,
     ConvocatoriaUpdate,
 )
+from app.modules.reglas_evaluacion.repository import ReglaEvaluacionRepository
 
 # Default evaluation rules applied to every new convocatoria
 DEFAULT_RULES = [
@@ -68,12 +69,18 @@ class ConvocatoriaService:
     def __init__(self, repository: ConvocatoriaRepository, db: object | None = None) -> None:
         self.repository = repository
         self.db = db
+        self.reglas_repository = (
+            ReglaEvaluacionRepository(db) if db is not None else None
+        )
 
     def list_all(self) -> list[Convocatoria]:
         return self.repository.list_all()
 
     def list_activas(self) -> list[Convocatoria]:
         return self.repository.list_activas()
+
+    def get_active(self) -> Convocatoria | None:
+        return self.repository.get_active()
 
     def get_by_id(self, convocatoria_id: int) -> Convocatoria:
         convocatoria = self.repository.get_by_id(convocatoria_id)
@@ -102,6 +109,12 @@ class ConvocatoriaService:
         data: ConvocatoriaUpdate,
     ) -> Convocatoria:
         convocatoria = self.get_by_id(convocatoria_id)
+        next_fecha_inicio = data.fecha_inicio or convocatoria.fecha_inicio
+        next_fecha_cierre = data.fecha_cierre or convocatoria.fecha_cierre
+        if next_fecha_cierre < next_fecha_inicio:
+            raise ConflictError("fecha_cierre no puede ser anterior a fecha_inicio")
+        if convocatoria.estado == ConvocatoriaEstado.CERRADA:
+            raise ConflictError("Una convocatoria cerrada no puede modificarse")
         updated = self.repository.update(convocatoria, data)
         self.repository.commit()
         return updated
@@ -111,11 +124,34 @@ class ConvocatoriaService:
         self.repository.delete(convocatoria)
         self.repository.commit()
 
-    def toggle_active(self, convocatoria_id: int) -> Convocatoria:
+    def activate(self, convocatoria_id: int) -> Convocatoria:
+        convocatoria = self.get_by_id(convocatoria_id)
+        if convocatoria.estado == ConvocatoriaEstado.CERRADA:
+            raise ConflictError("No se puede activar una convocatoria cerrada")
+        if self.reglas_repository is None:
+            raise ConflictError("No hay acceso a las reglas de evaluacion")
+        reglas = self.reglas_repository.list_by_convocatoria(convocatoria_id)
+        if not reglas:
+            raise ConflictError("No se puede activar una convocatoria sin reglas")
+        self.repository.deactivate_current_active(keep_convocatoria_id=convocatoria_id)
+        updated = self.repository.update(
+            convocatoria,
+            ConvocatoriaUpdate(
+                activa=True,
+                estado=ConvocatoriaEstado.ACTIVA,
+            ),
+        )
+        self.repository.commit()
+        return updated
+
+    def close(self, convocatoria_id: int) -> Convocatoria:
         convocatoria = self.get_by_id(convocatoria_id)
         updated = self.repository.update(
             convocatoria,
-            ConvocatoriaUpdate(activa=not convocatoria.activa),
+            ConvocatoriaUpdate(
+                activa=False,
+                estado=ConvocatoriaEstado.CERRADA,
+            ),
         )
         self.repository.commit()
         return updated

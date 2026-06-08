@@ -15,7 +15,13 @@ class CVExtractionProvider(Protocol):
 class MockCVExtractionClient:
     """Fallback provider that returns empty structured data."""
 
-    def extract(self, filename: str, content_type: str, content: bytes) -> dict[str, Any]:
+    def extract(
+        self,
+        filename: str,
+        content_type: str,
+        content: bytes,
+        warnings: list[str] | None = None,
+    ) -> dict[str, Any]:
         return {
             "source": "mock",
             "confidence": None,
@@ -33,7 +39,8 @@ class MockCVExtractionClient:
                 "investigacion": [],
             },
             "warnings": [
-                "Extraccion simulada: completa o ajusta los datos antes de guardar."
+                "Extraccion simulada: completa o ajusta los datos antes de guardar.",
+                *(warnings or []),
             ],
         }
 
@@ -105,7 +112,12 @@ Reglas:
     ) -> dict[str, Any]:
         if not self._api_key:
             logger.info("Gemini API key not configured, falling back to mock")
-            return MockCVExtractionClient().extract(filename, content_type, content)
+            return MockCVExtractionClient().extract(
+                filename,
+                content_type,
+                content,
+                warnings=["Gemini API key no configurada en el backend."],
+            )
 
         try:
             result = self._call_gemini(filename, content_type, content)
@@ -115,11 +127,14 @@ Reglas:
             )
             return result
         except Exception as exc:
-            logger.warning("Gemini extraction failed: %s, falling back to mock", exc)
+            logger.warning("Gemini extraction failed: %s", exc)
+            if not settings.gemini_fallback_to_mock:
+                raise
             return MockCVExtractionClient().extract(
                 filename,
                 content_type,
                 content,
+                warnings=[f"Gemini fallo y se uso fallback mock: {exc}"],
             )
 
     def _call_gemini(
@@ -133,9 +148,9 @@ Reglas:
 
         client = Client(api_key=self._api_key)
 
-        # Only PDF is supported
+        mime_type = content_type or "application/pdf"
         parts = [
-            Part.from_bytes(data=content, mime_type="application/pdf"),
+            Part.from_bytes(data=content, mime_type=mime_type),
             Part.from_text(text=self._EXTRACTION_PROMPT),
         ]
 

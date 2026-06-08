@@ -37,6 +37,7 @@ def _to_response(regla: object) -> ReglaEvaluacionResponse:
 )
 def list_reglas(
     convocatoria_id: int,
+    _: Usuario = Depends(require_admin_role),
     service: ReglaEvaluacionService = Depends(_get_service),
 ) -> list[ReglaEvaluacionResponse]:
     reglas = service.list_by_convocatoria(convocatoria_id)

@@ -109,10 +109,10 @@ class TestAdminEndpoints:
 
 
 class TestReglasEndpoints:
-    def test_list_reglas_no_auth_required(self) -> None:
-        """List reglas is public (no auth required)."""
+    def test_list_reglas_requires_admin(self) -> None:
+        """List reglas requires admin role."""
         response = client.get("/api/v1/reglas/convocatorias/1")
-        assert response.status_code == 200
+        assert response.status_code == 401
 
     def test_create_regla_requires_admin(self) -> None:
         """Create regla requires admin role."""

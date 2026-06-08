@@ -1,7 +1,7 @@
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.db.models.convocatoria import Convocatoria
+from app.db.models.convocatoria import Convocatoria, ConvocatoriaEstado
 from app.db.models.hoja_vida import ItemHojaVida, TipoItemHojaVida
 from app.db.models.postulacion import Postulacion, PostulacionEstado
 from app.db.models.user import UserRole, Usuario
@@ -137,7 +137,14 @@ class HojaVidaRepository:
         )
 
     def _ensure_active_convocatoria(self, user: Usuario) -> Convocatoria:
-        statement = select(Convocatoria).where(Convocatoria.activa.is_(True)).limit(1)
+        statement = (
+            select(Convocatoria)
+            .where(
+                Convocatoria.activa.is_(True),
+                Convocatoria.estado == ConvocatoriaEstado.ACTIVA,
+            )
+            .limit(1)
+        )
         convocatoria = self.db.scalar(statement)
         if convocatoria is None:
             from app.core.exceptions import NotFoundError

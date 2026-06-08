@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models.convocatoria import Convocatoria
+from app.db.models.convocatoria import Convocatoria, ConvocatoriaEstado
 from app.modules.convocatorias.schemas.convocatoria import (
     ConvocatoriaCreate,
     ConvocatoriaUpdate,
@@ -28,10 +28,24 @@ class ConvocatoriaRepository:
     def list_activas(self) -> list[Convocatoria]:
         statement = (
             select(Convocatoria)
-            .where(Convocatoria.activa.is_(True))
+            .where(
+                Convocatoria.activa.is_(True),
+                Convocatoria.estado == ConvocatoriaEstado.ACTIVA,
+            )
             .order_by(Convocatoria.fecha_inicio.desc())
         )
         return list(self.db.scalars(statement).all())
+
+    def get_active(self) -> Convocatoria | None:
+        statement = (
+            select(Convocatoria)
+            .where(
+                Convocatoria.activa.is_(True),
+                Convocatoria.estado == ConvocatoriaEstado.ACTIVA,
+            )
+            .limit(1)
+        )
+        return self.db.scalar(statement)
 
     def create(self, data: ConvocatoriaCreate, creado_por: int) -> Convocatoria:
         convocatoria = Convocatoria(
@@ -40,7 +54,8 @@ class ConvocatoriaRepository:
             fecha_inicio=data.fecha_inicio,
             fecha_cierre=data.fecha_cierre,
             creado_por=creado_por,
-            activa=True,
+            estado=ConvocatoriaEstado.BORRADOR,
+            activa=False,
         )
         self.db.add(convocatoria)
         self.db.flush()
@@ -59,10 +74,26 @@ class ConvocatoriaRepository:
             convocatoria.fecha_inicio = data.fecha_inicio
         if data.fecha_cierre is not None:
             convocatoria.fecha_cierre = data.fecha_cierre
+        if data.estado is not None:
+            convocatoria.estado = data.estado
         if data.activa is not None:
             convocatoria.activa = data.activa
         self.db.flush()
         return convocatoria
+
+    def deactivate_current_active(self, keep_convocatoria_id: int | None = None) -> None:
+        statement = select(Convocatoria).where(
+            Convocatoria.activa.is_(True),
+            Convocatoria.estado == ConvocatoriaEstado.ACTIVA,
+        )
+        if keep_convocatoria_id is not None:
+            statement = statement.where(
+                Convocatoria.id_convocatoria != keep_convocatoria_id
+            )
+        for convocatoria in self.db.scalars(statement).all():
+            convocatoria.activa = False
+            convocatoria.estado = ConvocatoriaEstado.BORRADOR
+        self.db.flush()
 
     def delete(self, convocatoria: Convocatoria) -> None:
         self.db.delete(convocatoria)

@@ -70,8 +70,9 @@ La API queda disponible en `http://localhost:8000` y la documentacion en
 | GET | `/api/v1/convocatorias/todas` | Todas (admin) | Admin |
 | GET | `/api/v1/convocatorias/{id}` | Detalle | Publico |
 | POST | `/api/v1/convocatorias` | Crear | Admin |
-| PATCH | `/api/v1/convocatorias/{id}` | Actualizar | Admin |
-| POST | `/api/v1/convocatorias/{id}/toggle` | Activar/cerrar | Admin |
+| PUT | `/api/v1/convocatorias/{id}` | Actualizar | Admin |
+| PATCH | `/api/v1/convocatorias/{id}/activate` | Activar convocatoria en exclusividad | Admin |
+| PATCH | `/api/v1/convocatorias/{id}/close` | Cerrar convocatoria | Admin |
 
 ### Postulaciones
 | Metodo | Ruta | Descripcion | Auth |
@@ -93,7 +94,7 @@ La API queda disponible en `http://localhost:8000` y la documentacion en
 ### Reglas de Evaluacion
 | Metodo | Ruta | Descripcion | Auth |
 |--------|------|-------------|------|
-| GET | `/api/v1/reglas/convocatorias/{id}` | Listar reglas | Publico |
+| GET | `/api/v1/reglas/convocatorias/{id}` | Listar reglas | Admin |
 | POST | `/api/v1/reglas/convocatorias/{id}` | Crear regla | Admin |
 | PATCH | `/api/v1/reglas/{id}` | Actualizar regla | Admin |
 | DELETE | `/api/v1/reglas/{id}` | Eliminar regla | Admin |

@@ -45,6 +45,7 @@ def get_convocatoria_activa(
             descripcion=conv.descripcion,
             fecha_inicio=conv.fecha_inicio,
             fecha_cierre=conv.fecha_cierre,
+            estado=conv.estado,
             activa=conv.activa,
         ),
     )
@@ -62,6 +63,7 @@ def list_convocatorias(
             descripcion=c.descripcion,
             fecha_inicio=c.fecha_inicio,
             fecha_cierre=c.fecha_cierre,
+            estado=c.estado,
             activa=c.activa,
         )
         for c in convocatorias
@@ -81,6 +83,7 @@ def list_all_convocatorias(
             descripcion=c.descripcion,
             fecha_inicio=c.fecha_inicio,
             fecha_cierre=c.fecha_cierre,
+            estado=c.estado,
             activa=c.activa,
             creado_por=c.creado_por,
             fecha_creacion=c.fecha_creacion,
@@ -102,6 +105,7 @@ def get_convocatoria(
         descripcion=convocatoria.descripcion,
         fecha_inicio=convocatoria.fecha_inicio,
         fecha_cierre=convocatoria.fecha_cierre,
+        estado=convocatoria.estado,
         activa=convocatoria.activa,
         creado_por=convocatoria.creado_por,
         fecha_creacion=convocatoria.fecha_creacion,
@@ -126,6 +130,7 @@ def create_convocatoria(
         descripcion=convocatoria.descripcion,
         fecha_inicio=convocatoria.fecha_inicio,
         fecha_cierre=convocatoria.fecha_cierre,
+        estado=convocatoria.estado,
         activa=convocatoria.activa,
         creado_por=convocatoria.creado_por,
         fecha_creacion=convocatoria.fecha_creacion,
@@ -133,7 +138,7 @@ def create_convocatoria(
     )
 
 
-@router.patch("/{convocatoria_id}", response_model=ConvocatoriaResponse)
+@router.put("/{convocatoria_id}", response_model=ConvocatoriaResponse)
 def update_convocatoria(
     convocatoria_id: int,
     payload: ConvocatoriaUpdate,
@@ -147,6 +152,7 @@ def update_convocatoria(
         descripcion=convocatoria.descripcion,
         fecha_inicio=convocatoria.fecha_inicio,
         fecha_cierre=convocatoria.fecha_cierre,
+        estado=convocatoria.estado,
         activa=convocatoria.activa,
         creado_por=convocatoria.creado_por,
         fecha_creacion=convocatoria.fecha_creacion,
@@ -154,19 +160,41 @@ def update_convocatoria(
     )
 
 
-@router.post("/{convocatoria_id}/toggle", response_model=ConvocatoriaResponse)
-def toggle_convocatoria(
+@router.patch("/{convocatoria_id}/activate", response_model=ConvocatoriaResponse)
+def activate_convocatoria(
     convocatoria_id: int,
     _: Usuario = Depends(require_admin_role),
     service: ConvocatoriaService = Depends(_get_service),
 ) -> ConvocatoriaResponse:
-    convocatoria = service.toggle_active(convocatoria_id)
+    convocatoria = service.activate(convocatoria_id)
     return ConvocatoriaResponse(
         id_convocatoria=convocatoria.id_convocatoria,
         titulo=convocatoria.titulo,
         descripcion=convocatoria.descripcion,
         fecha_inicio=convocatoria.fecha_inicio,
         fecha_cierre=convocatoria.fecha_cierre,
+        estado=convocatoria.estado,
+        activa=convocatoria.activa,
+        creado_por=convocatoria.creado_por,
+        fecha_creacion=convocatoria.fecha_creacion,
+        fecha_actualizacion=convocatoria.fecha_actualizacion,
+    )
+
+
+@router.patch("/{convocatoria_id}/close", response_model=ConvocatoriaResponse)
+def close_convocatoria(
+    convocatoria_id: int,
+    _: Usuario = Depends(require_admin_role),
+    service: ConvocatoriaService = Depends(_get_service),
+) -> ConvocatoriaResponse:
+    convocatoria = service.close(convocatoria_id)
+    return ConvocatoriaResponse(
+        id_convocatoria=convocatoria.id_convocatoria,
+        titulo=convocatoria.titulo,
+        descripcion=convocatoria.descripcion,
+        fecha_inicio=convocatoria.fecha_inicio,
+        fecha_cierre=convocatoria.fecha_cierre,
+        estado=convocatoria.estado,
         activa=convocatoria.activa,
         creado_por=convocatoria.creado_por,
         fecha_creacion=convocatoria.fecha_creacion,

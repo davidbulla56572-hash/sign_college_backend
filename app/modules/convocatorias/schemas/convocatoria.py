@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from app.db.models.convocatoria import ConvocatoriaEstado
 
 
 class ConvocatoriaCreate(BaseModel):
@@ -9,6 +11,12 @@ class ConvocatoriaCreate(BaseModel):
     fecha_inicio: datetime
     fecha_cierre: datetime
 
+    @model_validator(mode="after")
+    def validate_dates(self) -> "ConvocatoriaCreate":
+        if self.fecha_cierre < self.fecha_inicio:
+            raise ValueError("fecha_cierre no puede ser anterior a fecha_inicio")
+        return self
+
 
 class ConvocatoriaUpdate(BaseModel):
     titulo: str | None = Field(None, min_length=3, max_length=180)
@@ -16,6 +24,17 @@ class ConvocatoriaUpdate(BaseModel):
     fecha_inicio: datetime | None = None
     fecha_cierre: datetime | None = None
     activa: bool | None = None
+    estado: ConvocatoriaEstado | None = None
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "ConvocatoriaUpdate":
+        if (
+            self.fecha_inicio is not None
+            and self.fecha_cierre is not None
+            and self.fecha_cierre < self.fecha_inicio
+        ):
+            raise ValueError("fecha_cierre no puede ser anterior a fecha_inicio")
+        return self
 
 
 class ConvocatoriaResponse(BaseModel):
@@ -24,6 +43,7 @@ class ConvocatoriaResponse(BaseModel):
     descripcion: str | None = None
     fecha_inicio: datetime
     fecha_cierre: datetime
+    estado: ConvocatoriaEstado
     activa: bool
     creado_por: int
     fecha_creacion: datetime
@@ -36,6 +56,7 @@ class ConvocatoriaSummary(BaseModel):
     descripcion: str | None = None
     fecha_inicio: datetime
     fecha_cierre: datetime
+    estado: ConvocatoriaEstado
     activa: bool
 
 
