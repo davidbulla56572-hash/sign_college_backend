@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.api.deps.auth import get_current_active_user, require_admin_role
 from app.api.deps.db import get_db
@@ -9,6 +10,7 @@ from app.modules.postulaciones.schemas.postulacion import (
     PostulacionApplyResponse,
     PostulacionCreate,
     PostulacionDetail,
+    PostulacionFlowSummary,
     PostulacionStatusUpdate,
     PostulacionSummary,
 )
@@ -75,6 +77,15 @@ def apply_postulacion(
 ) -> PostulacionApplyResponse:
     """Apply/send the postulacion."""
     return service.apply(postulacion_id, current_user.id_usuario)
+
+
+@router.get("/mine/{postulacion_id}/summary", response_model=PostulacionFlowSummary)
+def get_my_postulacion_summary(
+    postulacion_id: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    service: PostulacionService = Depends(_get_service),
+) -> PostulacionFlowSummary:
+    return service.get_summary_for_user(postulacion_id, current_user.id_usuario)
 
 @router.post("", response_model=PostulacionDetail, status_code=201)
 def create_postulacion(
@@ -161,3 +172,51 @@ def update_postulacion_estado(
     postulacion = service.update_status(postulacion_id, payload)
     total_items = service.repository.count_items(postulacion_id)
     return _to_detail(postulacion, total_items)
+
+
+# -- Fase 14: Evaluar postulacion --
+
+@router.post("/{postulacion_id}/evaluar")
+def evaluar_postulacion(
+    postulacion_id: int,
+    _: Usuario = Depends(require_admin_role),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Ejecutar evaluacion sobre una postulacion (14.16)."""
+    from app.modules.evaluation.service import EvaluationService
+
+    eval_service = EvaluationService(db)
+    result = eval_service.apply_evaluation(postulacion_id)
+    return {
+        "id_postulacion": result.postulacion_id,
+        "estado": "EVALUADA",
+        "puntaje_total": result.puntaje_total,
+        "reglas_aplicadas": result.reglas_aplicadas,
+        "items_evaluados": result.items_evaluados,
+        "items_sin_regla": result.items_sin_regla,
+        "advertencias": result.advertencias,
+    }
+
+
+# -- Fase 14: Recalcular evaluacion --
+
+@router.post("/{postulacion_id}/recalculate")
+def recalcular_postulacion(
+    postulacion_id: int,
+    _: Usuario = Depends(require_admin_role),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Recalcular evaluacion con reglas e items actuales (14.11, 14.14)."""
+    from app.modules.evaluation.service import EvaluationService
+
+    eval_service = EvaluationService(db)
+    result = eval_service.recalculate_evaluation(postulacion_id)
+    return {
+        "id_postulacion": result.postulacion_id,
+        "estado": "EVALUADA",
+        "puntaje_total": result.puntaje_total,
+        "reglas_aplicadas": result.reglas_aplicadas,
+        "items_evaluados": result.items_evaluados,
+        "items_sin_regla": result.items_sin_regla,
+        "advertencias": result.advertencias,
+    }

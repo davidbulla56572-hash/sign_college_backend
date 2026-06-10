@@ -104,15 +104,31 @@ La API queda disponible en `http://localhost:8000` y la documentacion en
 |--------|------|-------------|------|
 | GET | `/api/v1/resultados/mis-resultados` | Mis resultados | Any |
 | GET | `/api/v1/resultados/{id}` | Detalle resultado | Any |
-| POST | `/api/v1/resultados/{id}/evaluar` | Evaluar postulacion | Admin |
+| POST | `/api/v1/resultados/{id}/evaluar` | Evaluar postulacion (legacy) | Admin |
 | GET | `/api/v1/resultados/ranking/{id}` | Ranking | Admin |
+
+### Postulaciones (Fase 14)
+| Metodo | Ruta | Descripcion | Auth |
+|--------|------|-------------|------|
+| POST | `/api/v1/postulaciones/{id}/evaluar` | Ejecutar evaluacion | Admin |
+| POST | `/api/v1/postulaciones/{id}/recalculate` | Recalcular evaluacion | Admin |
+
+### Admin (Fase 14)
+| Metodo | Ruta | Descripcion | Auth |
+|--------|------|-------------|------|
+| POST | `/api/v1/admin/postulaciones/{id}/recalculate` | Recalcular evaluacion (con trazabilidad) | Admin |
 
 ### Admin
 | Metodo | Ruta | Descripcion | Auth |
 |--------|------|-------------|------|
 | GET | `/api/v1/admin/aspirantes` | Lista aspirantes | Admin |
 | GET | `/api/v1/admin/aspirantes/{id}` | Detalle aspirante | Admin |
-| GET | `/api/v1/admin/postulaciones/{id}/detalle` | Detalle con soportes | Admin |
+| GET | `/api/v1/admin/postulaciones/{id}` | Detalle completo con items y soportes anidados (Fase 13) | Admin |
+| GET | `/api/v1/admin/postulaciones/{id}/detalle` | Detalle con soportes (flat) | Admin |
+| GET | `/api/v1/admin/postulaciones/{id}/evaluation-trace` | Trazabilidad del puntaje (Fase 13) | Admin |
+| PATCH | `/api/v1/admin/postulaciones/{id}/observaciones` | Guardar observaciones admin (Fase 13) | Admin |
+| PATCH | `/api/v1/admin/items/{id}/validate` | Toggle validacion de item (Fase 13) | Admin |
+| GET | `/api/v1/admin/items/{id}/soportes` | Listar soportes de un item (Fase 13) | Admin |
 
 ## Base tecnica
 

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import ConflictError, NotFoundError
 from app.db.models.convocatoria import Convocatoria, ConvocatoriaEstado
-from app.db.models.hoja_vida import ItemHojaVida
+from app.db.models.hoja_vida import ItemHojaVida, TipoItemHojaVida
 from app.db.models.postulacion import Postulacion, PostulacionEstado
 from app.modules.postulaciones.schemas.postulacion import (
     PostulacionCreate,
@@ -74,6 +74,15 @@ class PostulacionRepository:
             .where(ItemHojaVida.id_postulacion == postulacion_id)
         )
         return self.db.scalar(statement) or 0
+
+    def count_items_by_tipo(self, postulacion_id: int) -> dict[TipoItemHojaVida, int]:
+        statement = (
+            select(ItemHojaVida.tipo_item, func.count(ItemHojaVida.id_item))
+            .where(ItemHojaVida.id_postulacion == postulacion_id)
+            .group_by(ItemHojaVida.tipo_item)
+        )
+        rows = self.db.execute(statement).all()
+        return {tipo_item: count for tipo_item, count in rows}
 
     def create(
         self,

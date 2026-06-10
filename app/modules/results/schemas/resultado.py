@@ -1,7 +1,34 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+
+# -- Fase 15: Estado de postulacion --
+
+class PostulacionStatusResponse(BaseModel):
+    """Estado legible de una postulacion para el aspirante (15.15)."""
+    id_postulacion: int
+    estado: str
+    estado_label: str
+    estado_color: str
+    mensaje_contextual: str
+    id_convocatoria: int
+    titulo_convocatoria: str
+    fecha_envio: str | None = None
+    fecha_evaluacion: str | None = None
+
+
+# -- Fase 15: Resumen de evaluacion por seccion --
+
+class ResumenEvaluacion(BaseModel):
+    """Resumen de puntaje agrupado por tipo de item (15.16)."""
+    tipo_item: str
+    label: str
+    puntaje_obtenido: float
+    cantidad_items: int
+
+
+# -- Fase 15: Resultado del aspirante --
 
 class ConvocatoriaRef(BaseModel):
     id_convocatoria: int
@@ -26,13 +53,17 @@ class DetalleSeccionResponse(BaseModel):
 
 
 class MiResultadoResponse(BaseModel):
-    """Contrato 5.16: resultado del aspirante."""
+    """Contrato 15.16: resultado del aspirante con contexto y resumen."""
     id_postulacion: int
     estado: str
+    estado_label: str
+    estado_color: str
+    mensaje_contextual: str
     puntaje_total: float | None
     fecha_evaluacion: str | None = None
     convocatoria: ConvocatoriaRef
-    detalle: list[DetalleItemResultado]
+    resumen_evaluacion: list[ResumenEvaluacion] = Field(default_factory=list)
+    detalle: list[DetalleItemResultado] = Field(default_factory=list)
 
 
 class RankingEntry(BaseModel):

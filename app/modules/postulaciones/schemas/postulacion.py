@@ -49,6 +49,36 @@ class PostulacionApplyResponse(BaseModel):
     mensaje: str
 
 
+class PostulacionSummaryConvocatoria(BaseModel):
+    id_convocatoria: int
+    titulo: str
+
+
+class PostulacionSummaryDatosPersonales(BaseModel):
+    nombre: str
+    apellido: str
+    email: str | None = None
+
+
+class PostulacionResumenItems(BaseModel):
+    formacion: int = 0
+    experiencia: int = 0
+    produccion: int = 0
+    ponencia: int = 0
+    investigacion: int = 0
+
+
+class PostulacionFlowSummary(BaseModel):
+    id_postulacion: int
+    estado: PostulacionEstado
+    convocatoria: PostulacionSummaryConvocatoria
+    datos_personales: PostulacionSummaryDatosPersonales
+    resumen_items: PostulacionResumenItems
+    lista_para_aplicar: bool
+    total_items: int = 0
+    tiene_cv_cargado: bool = False
+
+
 class PostulacionStatusUpdate(BaseModel):
     estado: PostulacionEstado
     observaciones_admin: str | None = None

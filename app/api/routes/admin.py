@@ -13,14 +13,25 @@ from app.modules.admin.schemas.admin import (
     AdminAspirantDetail,
     AdminAspirantSummary,
     AdminPostulacionDetalle,
+    AdminPostulacionDetalleCompleto,
     AdminSoporteItem,
+    AdminSoporteItemSimple,
+    EvaluationTraceResponse,
+    ItemValidationResponse,
+    ObservacionesPayload,
+    ObservacionesResponse,
 )
+from app.modules.admin.service import AdminPostulacionReviewService
 
 router = APIRouter()
 
 
 def _get_db(db: Session = Depends(get_db)) -> Session:
     return db
+
+
+def _get_review_service(db: Session = Depends(_get_db)) -> AdminPostulacionReviewService:
+    return AdminPostulacionReviewService(db)
 
 
 def _format_dt(dt: datetime | None) -> str | None:
@@ -104,7 +115,7 @@ def get_aspirant_detail(
     )
 
 
-# -- Postulacion detail with soportes --
+# -- Postulacion detail with soportes (existing, flat) --
 
 @router.get(
     "/postulaciones/{postulacion_id}/detalle",
@@ -131,7 +142,6 @@ def get_postulacion_detalle(
 
         raise NotFoundError("Postulacion not found")
 
-    # Get items with soportes
     items_stmt = (
         select(ItemHojaVida)
         .where(ItemHojaVida.id_postulacion == postulacion_id)
@@ -182,3 +192,94 @@ def get_postulacion_detalle(
         total_items=len(items),
         soportes=soportes,
     )
+
+
+# -- Phase 13: Full admin review with items + nested soportes --
+
+@router.get(
+    "/postulaciones/{postulacion_id}",
+    response_model=AdminPostulacionDetalleCompleto,
+)
+def get_postulacion_review(
+    postulacion_id: int,
+    _: Usuario = Depends(require_admin_role),
+    service: AdminPostulacionReviewService = Depends(_get_review_service),
+) -> AdminPostulacionDetalleCompleto:
+    """Contract 13.16: admin review with items, soportes, puntajes, validation state."""
+    return service.get_postulacion_detalle_completo(postulacion_id)
+
+
+# -- Phase 13: Validate / unvalidate an item --
+
+@router.patch(
+    "/items/{item_id}/validate",
+    response_model=ItemValidationResponse,
+)
+def toggle_item_validation(
+    item_id: int,
+    _: Usuario = Depends(require_admin_role),
+    service: AdminPostulacionReviewService = Depends(_get_review_service),
+) -> ItemValidationResponse:
+    """Toggle the validation flag on an HV item."""
+    return service.toggle_item_validation(item_id)
+
+
+# -- Phase 13: Save admin observations --
+
+@router.patch(
+    "/postulaciones/{postulacion_id}/observaciones",
+    response_model=ObservacionesResponse,
+)
+def save_observaciones(
+    postulacion_id: int,
+    payload: ObservacionesPayload,
+    _: Usuario = Depends(require_admin_role),
+    service: AdminPostulacionReviewService = Depends(_get_review_service),
+) -> ObservacionesResponse:
+    """Save or clear admin observations on a postulacion."""
+    return service.save_observaciones(postulacion_id, payload.observaciones_admin)
+
+
+# -- Phase 13: List soportes for an item (admin context) --
+
+@router.get(
+    "/items/{item_id}/soportes",
+    response_model=list[AdminSoporteItemSimple],
+)
+def get_item_soportes(
+    item_id: int,
+    _: Usuario = Depends(require_admin_role),
+    service: AdminPostulacionReviewService = Depends(_get_review_service),
+) -> list[AdminSoporteItemSimple]:
+    """List all soportes for an HV item."""
+    return service.get_item_soportes(item_id)
+
+
+# -- Phase 13: Evaluation trace --
+
+@router.get(
+    "/postulaciones/{postulacion_id}/evaluation-trace",
+    response_model=EvaluationTraceResponse,
+)
+def get_evaluation_trace(
+    postulacion_id: int,
+    _: Usuario = Depends(require_admin_role),
+    service: AdminPostulacionReviewService = Depends(_get_review_service),
+) -> EvaluationTraceResponse:
+    """Contract 13.17 / 14.17: traceability of how the total score was built."""
+    return service.get_evaluation_trace(postulacion_id)
+
+
+# -- Fase 14: Recalculate evaluation --
+
+@router.post(
+    "/postulaciones/{postulacion_id}/recalculate",
+    response_model=EvaluationTraceResponse,
+)
+def recalculate_evaluation(
+    postulacion_id: int,
+    _: Usuario = Depends(require_admin_role),
+    service: AdminPostulacionReviewService = Depends(_get_review_service),
+) -> EvaluationTraceResponse:
+    """Recalculate evaluation with current rules and items (14.11, 14.14)."""
+    return service.recalculate_evaluation(postulacion_id)

@@ -16,6 +16,7 @@ from app.modules.cv_processing.schemas.hoja_vida import (
     HojaVidaProcesadaResponse,
     HojaVidaSavePayload,
     HojaVidaSaveResponse,
+    SoporteItemResponse,
 )
 
 
@@ -27,6 +28,14 @@ class InvalidCVFileError(AppError):
 class HojaVidaService:
     allowed_extensions = {".pdf"}
     allowed_content_types = {"application/pdf"}
+    allowed_support_extensions = {".pdf", ".png", ".jpg", ".jpeg", ".doc", ".docx"}
+    allowed_support_content_types = {
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
 
     def __init__(
         self,
@@ -71,7 +80,8 @@ class HojaVidaService:
         metadata = self.normalizer.normalize_metadata(raw_payload)
 
         postulacion.url_cv_original = stored_url
-        self.repository.update_user_personal_data(user, datos_personales)
+        # NOTE: No longer overwrites user profile with IA-extracted data.
+        # datos_personales are returned for display but not persisted to Usuario.
         self.repository.replace_hoja_vida_items(postulacion, items)
         self.repository.commit()
 
@@ -107,7 +117,8 @@ class HojaVidaService:
         if payload.documento:
             postulacion.url_cv_original = payload.documento.url_archivo
 
-        self.repository.update_user_personal_data(user, payload.datos_personales)
+        # NOTE: No longer overwrites user profile with form datos_personales.
+        # User profile is independent; datos_personales are used for summary/validation only.
         total_items = self.repository.replace_hoja_vida_items(postulacion, payload.items)
         self.repository.commit()
 
@@ -139,6 +150,7 @@ class HojaVidaService:
             if section_key:
                 getattr(items, section_key).append(
                     HojaVidaItemPayload(
+                        id_item=item_db.id_item,
                         descripcion=item_db.descripcion,
                         institucion=item_db.institucion,
                         fecha_inicio=item_db.fecha_inicio,
@@ -166,6 +178,42 @@ class HojaVidaService:
             datos_personales=datos_personales,
             items=items,
         )
+
+    def upload_item_support(
+        self,
+        user: Usuario,
+        item_id: int,
+        filename: str,
+        content_type: str | None,
+        content: bytes,
+    ) -> SoporteItemResponse:
+        self._validate_support_file(filename, content_type, content)
+        item = self.repository.get_item_for_user(item_id, user.id_usuario)
+        stored_url = self.storage.save_support(user.id_usuario, item.id_item, filename, content)
+        soporte = self.repository.create_soporte(
+            item_id=item.id_item,
+            nombre_archivo=filename,
+            url_archivo=stored_url,
+            tipo_archivo=content_type or "application/octet-stream",
+            tamanio_bytes=len(content),
+        )
+        self.repository.commit()
+        return self._to_soporte_response(soporte)
+
+    def list_item_supports(self, user: Usuario, item_id: int) -> list[SoporteItemResponse]:
+        item = self.repository.get_item_for_user(item_id, user.id_usuario)
+        soportes = self.repository.list_soportes_for_item(item.id_item)
+        return [self._to_soporte_response(soporte) for soporte in soportes]
+
+    def get_support_detail(self, user: Usuario, soporte_id: int) -> SoporteItemResponse:
+        soporte = self.repository.get_soporte_for_user(soporte_id, user.id_usuario)
+        return self._to_soporte_response(soporte)
+
+    def delete_support(self, user: Usuario, soporte_id: int) -> None:
+        soporte = self.repository.get_soporte_for_user(soporte_id, user.id_usuario)
+        self.storage.delete_file(soporte.url_archivo)
+        self.repository.delete_soporte(soporte)
+        self.repository.commit()
 
     def _db_section_map(self) -> dict:
         from app.db.models.hoja_vida import TipoItemHojaVida
@@ -195,3 +243,30 @@ class HojaVidaService:
 
         if len(content) > settings.upload_max_bytes:
             raise InvalidCVFileError("File exceeds the maximum allowed size")
+
+    def _validate_support_file(
+        self,
+        filename: str,
+        content_type: str | None,
+        content: bytes,
+    ) -> None:
+        extension = Path(filename or "").suffix.lower()
+        if extension not in self.allowed_support_extensions:
+            raise InvalidCVFileError("El soporte tiene una extension no permitida")
+        if content_type and content_type not in self.allowed_support_content_types:
+            raise InvalidCVFileError("El tipo de archivo del soporte no es permitido")
+        if not content:
+            raise InvalidCVFileError("El soporte esta vacio")
+        if len(content) > settings.upload_max_bytes:
+            raise InvalidCVFileError("El soporte excede el tamano maximo permitido")
+
+    def _to_soporte_response(self, soporte: object) -> SoporteItemResponse:
+        return SoporteItemResponse(
+            id_soporte=soporte.id_soporte,  # type: ignore[attr-defined]
+            id_item=soporte.id_item,  # type: ignore[attr-defined]
+            nombre_archivo=soporte.nombre_archivo,  # type: ignore[attr-defined]
+            url_archivo=soporte.url_archivo,  # type: ignore[attr-defined]
+            tipo_archivo=soporte.tipo_archivo,  # type: ignore[attr-defined]
+            tamanio_bytes=soporte.tamanio_bytes,  # type: ignore[attr-defined]
+            fecha_carga=soporte.fecha_carga,  # type: ignore[attr-defined]
+        )

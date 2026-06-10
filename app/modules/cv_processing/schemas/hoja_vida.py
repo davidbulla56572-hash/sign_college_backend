@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -21,11 +21,22 @@ class DatosPersonalesHojaVida(BaseModel):
 
 
 class HojaVidaItemPayload(BaseModel):
+    id_item: int | None = None
     descripcion: str = Field(min_length=1, max_length=2000)
     institucion: str | None = Field(default=None, max_length=180)
     fecha_inicio: date | None = None
     fecha_fin: date | None = None
     cantidad: int | None = Field(default=None, ge=0)
+
+
+class SoporteItemResponse(BaseModel):
+    id_soporte: int
+    id_item: int
+    nombre_archivo: str
+    url_archivo: str
+    tipo_archivo: str
+    tamanio_bytes: int
+    fecha_carga: datetime | None = None
 
 
 class HojaVidaItemsPayload(BaseModel):

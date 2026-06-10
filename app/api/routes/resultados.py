@@ -1,162 +1,99 @@
-from datetime import datetime
+"""Endpoints de resultados para el aspirante (Fase 15) y admin."""
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.api.deps.auth import get_current_active_user, require_admin_role
 from app.api.deps.db import get_db
-from app.db.models.postulacion import Postulacion, PostulacionEstado
 from app.db.models.user import Usuario
-from app.core.exceptions import NotFoundError
 from app.modules.evaluation.service import EvaluationService
 from app.modules.results.schemas.resultado import (
-    ConvocatoriaRef,
-    DetalleItemResultado,
-    DetalleResultadoResponse,
-    DetalleSeccionResponse,
     MiResultadoResponse,
+    PostulacionStatusResponse,
     RankingEntry,
     RankingResponse,
 )
+from app.modules.results.service import ResultsService
 
 router = APIRouter()
+
+
+def _get_results_service(db: Session = Depends(get_db)) -> ResultsService:
+    return ResultsService(db)
 
 
 def _get_eval_service(db: Session = Depends(get_db)) -> EvaluationService:
     return EvaluationService(db)
 
 
-def _format_dt(dt: datetime | None) -> str | None:
+# ============================================================
+# Aspirante endpoints (Fase 15)
+# ============================================================
+
+
+@router.get(
+    "/mis-resultados",
+    response_model=list[MiResultadoResponse],
+    summary="Mis resultados (15.15)",
+)
+def get_mis_resultados(
+    current_user: Usuario = Depends(get_current_active_user),
+    service: ResultsService = Depends(_get_results_service),
+) -> list[MiResultadoResponse]:
+    """Lista de resultados del aspirante con contexto completo (15.16)."""
+    return service.get_mis_resultados(current_user.id_usuario)
+
+
+@router.get(
+    "/postulaciones/{postulacion_id}",
+    response_model=MiResultadoResponse,
+    summary="Detalle de una postulacion (15.15)",
+)
+def get_resultado_detalle(
+    postulacion_id: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    service: ResultsService = Depends(_get_results_service),
+) -> MiResultadoResponse:
+    """Detalle de resultado de una postulacion especifica."""
+    return service.get_resultado_detalle(postulacion_id, current_user.id_usuario)
+
+
+@router.get(
+    "/postulaciones/{postulacion_id}/status",
+    response_model=PostulacionStatusResponse,
+    summary="Estado legible de una postulacion (15.15)",
+)
+def get_postulacion_status(
+    postulacion_id: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    service: ResultsService = Depends(_get_results_service),
+) -> PostulacionStatusResponse:
+    """Devuelve el estado legible de una postulacion con mensaje contextual."""
+    return service.get_postulacion_status(postulacion_id, current_user.id_usuario)
+
+
+# ============================================================
+# Admin endpoints (legacy, preserved for backward compatibility)
+# ============================================================
+
+
+def _format_dt(dt) -> str | None:
     if dt is None:
         return None
     return dt.isoformat()
 
 
-# -- Aspirante endpoints --
-
-@router.get("/mis-resultados", response_model=list[MiResultadoResponse])
-def get_my_results(
-    current_user: Usuario = Depends(get_current_active_user),
-    eval_service: EvaluationService = Depends(_get_eval_service),
-) -> list[MiResultadoResponse]:
-    statement = (
-        select(Postulacion)
-        .where(Postulacion.id_usuario == current_user.id_usuario)
-        .options(joinedload(Postulacion.convocatoria))
-        .order_by(Postulacion.fecha_creacion.desc())
-    )
-    postulaciones = list(eval_service.db.scalars(statement).all())
-
-    results: list[MiResultadoResponse] = []
-    for p in postulaciones:
-        items_stmt = (
-            select(Postulacion.items_hoja_vida.property.mapper.class_)
-            .where(
-                __import__("sqlalchemy", fromlist=["Column"]).Column(
-                    "id_postulacion"
-                )
-                == p.id_postulacion
-            )
-        )
-        from app.db.models.hoja_vida import ItemHojaVida
-
-        items = list(
-            eval_service.db.scalars(
-                select(ItemHojaVida).where(
-                    ItemHojaVida.id_postulacion == p.id_postulacion
-                )
-            ).all()
-        )
-
-        titulo = p.convocatoria.titulo if p.convocatoria else ""
-        results.append(
-            MiResultadoResponse(
-                id_postulacion=p.id_postulacion,
-                estado=p.estado.value,
-                puntaje_total=p.puntaje_total,
-                fecha_evaluacion=_format_dt(p.fecha_evaluacion),
-                convocatoria=ConvocatoriaRef(
-                    id_convocatoria=p.id_convocatoria,
-                    titulo=titulo,
-                ),
-                detalle=[
-                    DetalleItemResultado(
-                        id_item=item.id_item,
-                        tipo_item=item.tipo_item.value,
-                        descripcion=item.descripcion,
-                        puntaje_asignado=item.puntaje_asignado or 0.0,
-                    )
-                    for item in items
-                ],
-            )
-        )
-
-    return results
-
-
-@router.get("/{postulacion_id}", response_model=MiResultadoResponse)
-def get_resultado_detalle(
-    postulacion_id: int,
-    current_user: Usuario = Depends(get_current_active_user),
-    eval_service: EvaluationService = Depends(_get_eval_service),
-) -> MiResultadoResponse:
-    statement = (
-        select(Postulacion)
-        .where(
-            Postulacion.id_postulacion == postulacion_id,
-            Postulacion.id_usuario == current_user.id_usuario,
-        )
-        .options(joinedload(Postulacion.convocatoria))
-    )
-    postulacion = eval_service.db.scalar(statement)
-    if postulacion is None:
-        raise NotFoundError("Postulacion not found")
-
-    from app.db.models.hoja_vida import ItemHojaVida
-
-    items = list(
-        eval_service.db.scalars(
-            select(ItemHojaVida).where(
-                ItemHojaVida.id_postulacion == postulacion_id
-            )
-        ).all()
-    )
-
-    titulo = postulacion.convocatoria.titulo if postulacion.convocatoria else ""
-
-    return MiResultadoResponse(
-        id_postulacion=postulacion.id_postulacion,
-        estado=postulacion.estado.value,
-        puntaje_total=postulacion.puntaje_total,
-        fecha_evaluacion=_format_dt(postulacion.fecha_evaluacion),
-        convocatoria=ConvocatoriaRef(
-            id_convocatoria=postulacion.id_convocatoria,
-            titulo=titulo,
-        ),
-        detalle=[
-            DetalleItemResultado(
-                id_item=item.id_item,
-                tipo_item=item.tipo_item.value,
-                descripcion=item.descripcion,
-                puntaje_asignado=item.puntaje_asignado or 0.0,
-            )
-            for item in items
-        ],
-    )
-
-
-# -- Admin endpoints --
-
 @router.get(
     "/ranking/{convocatoria_id}",
     response_model=RankingResponse,
+    summary="Ranking de una convocatoria",
 )
 def get_ranking(
     convocatoria_id: int,
     _: Usuario = Depends(require_admin_role),
     eval_service: EvaluationService = Depends(_get_eval_service),
 ) -> RankingResponse:
+    """Ranking de todas las postulaciones evaluadas en una convocatoria."""
     data = eval_service.evaluate_convocatoria_ranking(convocatoria_id)
 
     entries = [
@@ -184,16 +121,20 @@ def get_ranking(
 @router.post(
     "/{postulacion_id}/evaluar",
     response_model=MiResultadoResponse,
+    summary="Evaluar una postulacion (legacy)",
 )
 def evaluar_postulacion(
     postulacion_id: int,
     _: Usuario = Depends(require_admin_role),
     eval_service: EvaluationService = Depends(_get_eval_service),
+    results_service: ResultsService = Depends(_get_results_service),
 ) -> MiResultadoResponse:
-    result = eval_service.apply_evaluation(postulacion_id)
-
-    # Fetch the updated postulacion
+    """Evalua una postulacion y devuelve el resultado (legacy)."""
+    from app.db.models.postulacion import Postulacion
+    from sqlalchemy import select
     from sqlalchemy.orm import joinedload
+
+    result = eval_service.apply_evaluation(postulacion_id)
 
     statement = (
         select(Postulacion)
@@ -202,7 +143,11 @@ def evaluar_postulacion(
     )
     postulacion = eval_service.db.scalar(statement)
     if postulacion is None:
+        from app.core.exceptions import NotFoundError
+
         raise NotFoundError("Postulacion not found")
+
+    titulo = postulacion.convocatoria.titulo if postulacion.convocatoria else ""
 
     from app.db.models.hoja_vida import ItemHojaVida
 
@@ -214,24 +159,26 @@ def evaluar_postulacion(
         ).all()
     )
 
-    titulo = postulacion.convocatoria.titulo if postulacion.convocatoria else ""
-
     return MiResultadoResponse(
         id_postulacion=postulacion.id_postulacion,
         estado=postulacion.estado.value,
+        estado_label="Evaluada",
+        estado_color="green",
+        mensaje_contextual="Tu postulacion ha sido evaluada.",
         puntaje_total=result.puntaje_total,
         fecha_evaluacion=_format_dt(postulacion.fecha_evaluacion),
-        convocatoria=ConvocatoriaRef(
-            id_convocatoria=postulacion.id_convocatoria,
-            titulo=titulo,
-        ),
+        convocatoria={
+            "id_convocatoria": postulacion.id_convocatoria,
+            "titulo": titulo,
+        },
+        resumen_evaluacion=[],
         detalle=[
-            DetalleItemResultado(
-                id_item=d.id_item,
-                tipo_item=d.tipo_item.value,
-                descripcion=d.descripcion,
-                puntaje_asignado=d.puntaje_asignado,
-            )
+            {
+                "id_item": d.id_item,
+                "tipo_item": d.tipo_item.value,
+                "descripcion": d.descripcion,
+                "puntaje_asignado": d.puntaje_asignado,
+            }
             for d in result.item_detalles
         ],
     )

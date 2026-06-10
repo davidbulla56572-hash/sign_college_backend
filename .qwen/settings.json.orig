@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Agent(Explore)",
+      "Bash(git *)",
+      "Read(//home/bugzius/Documents/estudio/programacion_web_2/proyecto_final/**)",
+      "Bash(python *)",
+      "Bash(npx *)",
+      "Bash(find *)",
+      "Bash(diff *)"
+    ]
+  },
+  "$version": 4
+}

@@ -13,6 +13,7 @@ from app.modules.cv_processing.schemas.hoja_vida import (
     HojaVidaProcesadaResponse,
     HojaVidaSavePayload,
     HojaVidaSaveResponse,
+    SoporteItemResponse,
 )
 from app.modules.cv_processing.service import HojaVidaService
 
@@ -84,3 +85,51 @@ def save_hoja_vida(
         postulacion_id=postulacion_id,
         payload=payload,
     )
+
+
+@router.post(
+    "/items/{item_id}/soportes",
+    response_model=SoporteItemResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_item_support(
+    item_id: int,
+    file: UploadFile = File(...),
+    current_user: Usuario = Depends(get_current_active_user),
+    service: HojaVidaService = Depends(get_hoja_vida_service),
+) -> SoporteItemResponse:
+    content = await file.read()
+    return service.upload_item_support(
+        user=current_user,
+        item_id=item_id,
+        filename=file.filename or "soporte",
+        content_type=file.content_type,
+        content=content,
+    )
+
+
+@router.get("/items/{item_id}/soportes", response_model=list[SoporteItemResponse])
+def list_item_supports(
+    item_id: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    service: HojaVidaService = Depends(get_hoja_vida_service),
+) -> list[SoporteItemResponse]:
+    return service.list_item_supports(current_user, item_id)
+
+
+@router.get("/soportes/{soporte_id}", response_model=SoporteItemResponse)
+def get_support_detail(
+    soporte_id: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    service: HojaVidaService = Depends(get_hoja_vida_service),
+) -> SoporteItemResponse:
+    return service.get_support_detail(current_user, soporte_id)
+
+
+@router.delete("/soportes/{soporte_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_support(
+    soporte_id: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    service: HojaVidaService = Depends(get_hoja_vida_service),
+) -> None:
+    service.delete_support(current_user, soporte_id)
